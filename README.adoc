@@ -1,3 +1,6 @@
 = Showcase for Dagger on Golang
 
 This project holds a showcase for Dagger related things.
+
+- https://medium.com/cloud-native-daily/build-ci-cd-pipeline-using-your-favorite-language-with-dagger-42ccfc43e073
+- https://archive.docs.dagger.io/0.9/sdk/go/959738/get-started/
