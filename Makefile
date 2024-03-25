@@ -87,6 +87,10 @@ run-gin:
 test-fake-gin:
 	@$(SHELL) -c "cd todo-service-gin; go test -v -tags=fake ./test"
 
+# Dagger
+dagger:
+	@$(SHELL) -c "cd todo-service-gin; dagger run go run ci/main.go"
+
 # Helper
 clear:
 	rm -rf todo-service-gin/$(BINARY)
@@ -94,3 +98,4 @@ clear:
 install:
 	go install braces.dev/errtrace/cmd/errtrace@latest
 	go install golang.org/x/tools/cmd/deadcode@latest
+	go install dagger.io/dagger@latest
