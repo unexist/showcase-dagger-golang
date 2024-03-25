@@ -1,0 +1,3 @@
+= Showcase for Dagger on Golang
+
+This project holds a showcase for Dagger related things.
