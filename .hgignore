@@ -13,3 +13,6 @@ target/
 # Zig
 **/zig-cache/*
 **/zig-out/*
+
+# Golang
+**/build/*

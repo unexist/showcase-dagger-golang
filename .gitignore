@@ -40,3 +40,6 @@ release.properties
 # Zig
 **/zig-cache/*
 **/zig-out/*
+
+# Golang
+**/build/*
