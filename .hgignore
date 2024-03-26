@@ -16,3 +16,7 @@ target/
 
 # Golang
 **/build/*
+
+# Certs
+*.crt
+*.key

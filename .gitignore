@@ -43,3 +43,7 @@ release.properties
 
 # Golang
 **/build/*
+
+# Certs
+*.crt
+*.key
