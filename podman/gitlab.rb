@@ -5,12 +5,14 @@ registry_nginx['listen_port'] = 4567
 registry_external_url 'https://gitlab:4567'
 nginx['ssl_certificate'] = "/etc/gitlab/ssl/gitlab.crt"
 nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/gitlab.key"
-#gitlab_rails['gitlab_shell_ssh_port'] = 10022
+
+letsencrypt['enable'] = false
+gitaly['enable'] = false
+prometheus_monitoring['enable'] = false
 
 # Constrained memory - https://docs.gitlab.com/omnibus/settings/memory_constrained_envs.html
 puma['worker_processes'] = 0
 sidekiq['max_concurrency'] = 10
-prometheus_monitoring['enable'] = false
 
 gitaly['configuration'] = {
     concurrency: [
@@ -22,15 +24,16 @@ gitaly['configuration'] = {
         'max_per_repo' => 3,
       },
     ],
-    cgroups: {
-        repositories: {
-            count: 2,
-        },
-        #mountpoint: '/sys/fs/cgroup',
-        hierarchy_root: 'gitaly',
-        memory_bytes: 500000,
-        cpu_shares: 512,
-    },
+    # cgroupV2 is still broken - https://forum.gitlab.com/t/gitaly-fails-to-start-unable-to-create-file-in-sys/60455
+    #cgroups: {
+    #    repositories: {
+    #        count: 2,
+    #    },
+    #    mountpoint: '/sys/fs/cgroup',
+    #    hierarchy_root: 'gitaly',
+    #    memory_bytes: 500000,
+    #    cpu_shares: 512,
+    #},
 }
 
 gitaly['env'] = {
