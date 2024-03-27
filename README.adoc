@@ -2,6 +2,10 @@
 
 This project holds a showcase for Dagger related things.
 
+== Links
+
 - https://medium.com/cloud-native-daily/build-ci-cd-pipeline-using-your-favorite-language-with-dagger-42ccfc43e073
 - https://archive.docs.dagger.io/0.9/sdk/go/959738/get-started/
 - https://pythonspeed.com/articles/gitlab-build-docker-image/
+- https://docs.gitlab.com/omnibus/settings/memory_constrained_envs.html
+- https://docs.gitlab.com/16.10/ee/architecture/blueprints/runner_tokens/index.html#using-the-authentication-token-in-place-of-the-registration-token
