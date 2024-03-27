@@ -17,7 +17,7 @@ gen-ssl:
 
 # Podman
 pd-machine-init:
-	podman machine init --memory=8192 --cpus=2 --disk-size=20
+	podman machine init --memory=8192 --cpus=4
 
 pd-machine-start:
 	podman machine start
@@ -55,9 +55,11 @@ pd-pod-recreate: pd-pod-rm pd-pod-create
 #   - './ssl/gitlab.key:/etc/gitlab/ssl/gitlab.key'
 pd-gitlab: #gen-ssl
 	@podman run -dit --name gitlab --pod=$(PODNAME) \
+		--memory=4096m --cpus=4 \
 		-v ./gitlab.crt:/etc/gitlab/ssl/gitlab.crt \
 		-v ./gitlab.key:/etc/gitlab/ssl/gitlab.key \
 		-v ./gitlab.rb:/etc/gitlab/gitlab.rb \
+		-e GITLAB_ROOT_EMAIL="root@local" -e GITLAB_ROOT_PASSWORD="todo_showcase!42" \
 		docker.io/gitlab/gitlab-ce:latest
 
 #  runner:
@@ -71,7 +73,8 @@ pd-gitlab: #gen-ssl
 #      - './ssl/root.pem:/etc/ssl/certs/ca-certificates.crt'
 pd-runner:
 	@podman run -dit --name runner --pod=$(PODNAME) \
-      docker.io/gitlab/gitlab-runner:latest
+		--memory=2048m --cpus=2 \
+		docker.io/gitlab/gitlab-runner:latest
 
 pd-postgres:
 	@podman run -dit --name postgres --pod=$(PODNAME) \
