@@ -77,7 +77,7 @@ func publish(ctx *context.Context, client *dagger.Client) {
 	)
 
 	_, err := client.
-		Pipeline("Publish to Docker Hub").
+		Pipeline("Publish to Gitlab").
 		Host().
 		Directory(".").
 		DockerBuild(dagger.DirectoryDockerBuildOpts{
