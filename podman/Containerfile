@@ -1,0 +1,43 @@
+FROM registry.gitlab.com/qontainers/pipglr:latest
+
+MAINTAINER Christoph Kappel <christoph@unexist.dev>
+
+ARG PODNAME
+
+# FIXME: We have to redefine the label - unfortunately passing args to the next stage doesn't
+#        work as expected and we additionally have to add the name of the pod
+ARG DEFAULT_JOB_IMAGE=registry.fedoraproject.org/fedora-minimal:latest
+ARG GITLAB_URL
+ARG NESTED_PRIVILEGED=true
+
+COPY gitlab.crt /etc/gitlab-runner/certs/gitlab.crt
+
+LABEL register="podman run -it --rm --pod=${PODNAME} \
+    --secret=REGISTRATION_TOKEN,type=env \
+    -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
+    -e REGISTER_NON_INTERACTIVE=true \
+    -e CI_SERVER_URL=${GITLAB_URL} \
+    -e CI_SERVER_TLS_CA_FILE=/etc/gitlab-runner/certs/gitlab.crt \
+    -e RUNNER_NAME=pipglr \
+    -e RUNNER_EXECUTOR=docker \
+    -e RUNNER_SHELL=bash \
+    -e DOCKER_HOST=unix:///home/runner/podman.sock \
+    -e DOCKER_IMAGE=${DEFAULT_JOB_IMAGE} \
+    -e DOCKER_CACHE_DIR=/cache \
+    -e DOCKER_VOLUMES=/cache \
+    -e DOCKER_NETWORK_MODE=host \
+    -e DOCKER_PRIVILEGED=${NESTED_PRIVILEGED} \
+    --entrypoint=/usr/bin/gitlab-runner \$IMAGE register"
+
+LABEL dumpconfig="podman run -it --rm --pod=${PODNAME} \
+    --secret config.toml --entrypoint=/bin/cat \
+    \$IMAGE /var/run/secrets/config.toml"
+
+LABEL run="podman run -dit --name pipglr  --pod=${PODNAME} \
+    --secret config.toml,uid=1001,gid=1001 \
+    -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
+    -v pipglr-storage:/home/podman/.local/share/containers \
+    -v pipglr-cache:/cache \
+    --systemd true --privileged \
+    --device /dev/fuse \
+    --device /dev/fuse \$IMAGE"
