@@ -12,12 +12,16 @@ ARG NESTED_PRIVILEGED=true
 
 COPY gitlab.crt /etc/gitlab-runner/certs/gitlab.crt
 
+# Update timeouts
+RUN sed -i "s#system service#system service --time 0#" /home/podman/.config/systemd/user/podman.service
+
 LABEL register="podman run -it --rm --pod=${PODNAME} \
     --secret=REGISTRATION_TOKEN,type=env \
     -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
     -e REGISTER_NON_INTERACTIVE=true \
     -e CI_SERVER_URL=${GITLAB_URL} \
     -e CI_SERVER_TLS_CA_FILE=/etc/gitlab-runner/certs/gitlab.crt \
+    -e CLONE_URL=${GITLAB_URL} \
     -e RUNNER_NAME=pipglr \
     -e RUNNER_EXECUTOR=docker \
     -e RUNNER_SHELL=bash \
@@ -33,11 +37,10 @@ LABEL dumpconfig="podman run -it --rm --pod=${PODNAME} \
     --secret config.toml --entrypoint=/bin/cat \
     \$IMAGE /var/run/secrets/config.toml"
 
-LABEL run="podman run -dit --name pipglr  --pod=${PODNAME} \
+LABEL run="podman run -dit --name pipglr --pod=${PODNAME} \
     --secret config.toml,uid=1001,gid=1001 \
     -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
     -v pipglr-storage:/home/podman/.local/share/containers \
     -v pipglr-cache:/cache \
     --systemd true --privileged \
-    --device /dev/fuse \
     --device /dev/fuse \$IMAGE"
