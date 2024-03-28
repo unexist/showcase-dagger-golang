@@ -66,3 +66,13 @@ install:
 	go install braces.dev/errtrace/cmd/errtrace@latest
 	go install golang.org/x/tools/cmd/deadcode@latest
 	go install dagger.io/dagger@latest
+
+# Git
+# TOKEN=abc123 make test-bvuild
+test-build:
+	curl -k -X POST --fail -F token=$(TOKEN) -F ref=master \
+		https://localhost:10443/api/v4/projects/2/trigger/pipeline
+
+clone:
+	git clone -c http.sslVerify=false \
+		https://localhost:10443/root/showcase-dagger-golang.git
