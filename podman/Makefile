@@ -3,27 +3,31 @@ PG_USER := postgres
 PG_PASS := postgres
 
 COUNTRY := DE
-STATE := NRW
-LOCALITY := NRW
+STATE := DE
+LOCALITY := DE
 ORGNAME := unexist.dev
 ORGUNIT := showcase
-FQDN := unexist.dev
+FQDN := gitlab
 
 # SSL
 gen-ssl:
-	openssl req -newkey rsa:4096  -x509  -sha512  -days 365 -nodes \
+	@openssl req -newkey rsa:4096  -x509  -sha512  -days 365 -nodes \
 		-out gitlab.crt -keyout gitlab.key \
+		-addext "subjectAltName=DNS:gitlab" \
 		-subj "/C=$(COUNTRY)/ST=$(STATE)/L=$(LOCALITY)/O=$(ORGNAME)/OU=$(ORGUNIT)/CN=$(FQDN)"
+
+show-ssl:
+	@openssl x509 -in gitlab.crt -text -noout
 
 # Podman
 pd-machine-init:
-	podman machine init --memory=8192 --cpus=4
+	@podman machine init --memory=8192 --cpus=4
 
 pd-machine-start:
-	podman machine start
+	@podman machine start
 
 pd-machine-stop:
-	podman machine stop
+	@podman machine stop
 
 pd-machine-rm:
 	@podman machine rm
@@ -36,7 +40,7 @@ pd-pod-create:
 		-p 4567:4567
 
 pd-pod-rm:
-	podman pod rm -f $(PODNAME)
+	@podman pod rm -f $(PODNAME)
 
 pd-pod-recreate: pd-pod-rm pd-pod-create
 
@@ -74,6 +78,7 @@ pd-gitlab: #gen-ssl
 pd-runner:
 	@podman run -dit --name runner --pod=$(PODNAME) \
 		--memory=2048m --cpus=2 \
+		-v ./gitlab.crt:/etc/gitlab-runner/certs/gitlab.crt \
 		docker.io/gitlab/gitlab-runner:latest
 
 pd-postgres:
