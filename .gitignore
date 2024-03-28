@@ -47,3 +47,6 @@ release.properties
 # Certs
 *.crt
 *.key
+
+# Gitlab
+podman/config.toml

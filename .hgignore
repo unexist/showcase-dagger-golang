@@ -20,3 +20,6 @@ target/
 # Certs
 *.crt
 *.key
+
+# Gitlab
+podman/config.toml
