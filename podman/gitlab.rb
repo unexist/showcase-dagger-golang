@@ -1,13 +1,15 @@
 # These are the only changed settings
-external_url 'https://gitlab/'
+external_url 'https://gitlab:10443/'
 registry_nginx['enable'] = true
 registry_nginx['listen_port'] = 4567
 registry_external_url 'https://gitlab:4567'
 nginx['ssl_certificate'] = "/etc/gitlab/ssl/gitlab.crt"
 nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/gitlab.key"
 
+# Required - otherwise der port from external_url is used - https://docs.gitlab.com/omnibus/settings/nginx.html#setting-the-nginx-listen-port
+nginx['listen_port'] = 443
+
 letsencrypt['enable'] = false
-gitaly['enable'] = false
 prometheus_monitoring['enable'] = false
 
 # Constrained memory - https://docs.gitlab.com/omnibus/settings/memory_constrained_envs.html
