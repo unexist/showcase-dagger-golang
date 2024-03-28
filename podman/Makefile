@@ -1,20 +1,27 @@
+# Config
 PODNAME := showcase
 PG_USER := postgres
 PG_PASS := postgres
 
-COUNTRY := DE
-STATE := DE
-LOCALITY := DE
-ORGNAME := unexist.dev
-ORGUNIT := showcase
-FQDN := gitlab
+SSL_COUNTRY := DE
+SSL_STATE := DE
+SSL_LOCALITY := DE
+SSL_ORGNAME := unexist.dev
+SSL_ORGUNIT := showcase
+SSL_FQDN := gitlab
+
+GITLAB_EMAIL := "root@local"
+GITLAB_PASS := "todo_showcase!42"
+GITLAB_URL := "https://gitlab:443"
+
+RUNNER_IMAGE := "registry.gitlab.com/qontainers/pipglr:latest"
 
 # SSL
 gen-ssl:
 	@openssl req -newkey rsa:4096  -x509  -sha512  -days 365 -nodes \
 		-out gitlab.crt -keyout gitlab.key \
 		-addext "subjectAltName=DNS:gitlab" \
-		-subj "/C=$(COUNTRY)/ST=$(STATE)/L=$(LOCALITY)/O=$(ORGNAME)/OU=$(ORGUNIT)/CN=$(FQDN)"
+		-subj "/C=$(SSL_COUNTRY)/ST=$(SSL_STATE)/L=$(SSL_LOCALITY)/O=$(SSL_ORGNAME)/OU=$(SSL_ORGUNIT)/CN=$(SSL_FQDN)"
 
 show-ssl:
 	@openssl x509 -in gitlab.crt -text -noout
@@ -44,42 +51,44 @@ pd-pod-rm:
 
 pd-pod-recreate: pd-pod-rm pd-pod-create
 
-# gitlab:
-# image: 'gitlab/gitlab-ce:latest'
-# container_name: 'gitlab'
-# restart: always
-# ports:
-#   - '22:22'
-#   - '80:80'
-#   - '443:443'
-#   - '4567:4567'
-# volumes:
-#   - './gitlab.rb:/etc/gitlab/gitlab.rb'
-#   - './ssl/gitlab.crt:/etc/gitlab/ssl/gitlab.crt'
-#   - './ssl/gitlab.key:/etc/gitlab/ssl/gitlab.key'
-pd-gitlab: #gen-ssl
+pd-gitlab: gen-ssl
 	@podman run -dit --name gitlab --pod=$(PODNAME) \
 		--memory=4096m --cpus=4 \
 		-v ./gitlab.crt:/etc/gitlab/ssl/gitlab.crt \
 		-v ./gitlab.key:/etc/gitlab/ssl/gitlab.key \
 		-v ./gitlab.rb:/etc/gitlab/gitlab.rb \
-		-e GITLAB_ROOT_EMAIL="root@local" -e GITLAB_ROOT_PASSWORD="todo_showcase!42" \
+		-e GITLAB_ROOT_EMAIL="$(GITLAB_MAIL)" -e GITLAB_ROOT_PASSWORD="$(GITLAB_PASS)" \
 		docker.io/gitlab/gitlab-ce:latest
 
-#  runner:
-#    image: 'gitlab/gitlab-runner:latest'
-#    container_name: 'runner'
-#    restart: always
-#    environment:
-#      - DOCKER_HOST=tcp://dind:2375
-#    volumes:
-#      - './persistent-data/runner/config:/etc/gitlab-runner'
-#      - './ssl/root.pem:/etc/ssl/certs/ca-certificates.crt'
 pd-runner:
 	@podman run -dit --name runner --pod=$(PODNAME) \
 		--memory=2048m --cpus=2 \
 		-v ./gitlab.crt:/etc/gitlab-runner/certs/gitlab.crt \
 		docker.io/gitlab/gitlab-runner:latest
+
+pd-runner-podman-build:
+	@podman build -t $(RUNNER_IMAGE) -f Containerfile \
+		--build-arg=GITLAB_URL=$(GITLAB_URL) \
+		--build-arg=PODNAME=$(PODNAME)
+
+# TOKEN=abcd123 make pd-runner-podman
+pd-runner-podman:
+	#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true
+	#podman secret exists config.toml && podman secret rm config.toml || true
+	@podman secret rm REGISTRATION_TOKEN || true
+	@podman secret rm config.toml || true
+	@podman volume exists pipglr-storage && podman volume rm pipglr-storage || true
+	@podman volume exists pipglr-cache && podman volume rm pipglr-cache || true
+
+	@echo "$(TOKEN)" | podman secret create REGISTRATION_TOKEN -
+	@touch ./config.toml
+	@podman container runlabel register $(RUNNER_IMAGE)
+
+	@podman secret create config.toml ./config.toml
+
+	@podman container runlabel setupstorage $(RUNNER_IMAGE)
+	@podman container runlabel setupcache $(RUNNER_IMAGE)
+	@podman container runlabel run $(RUNNER_IMAGE)
 
 pd-postgres:
 	@podman run -dit --name postgres --pod=$(PODNAME) \
@@ -87,6 +96,6 @@ pd-postgres:
 		-e POSTGRES_PASSWORD=$(PG_PASS) \
 		docker.io/postgres:latest
 
-pd-init: pd-machine-init pd-machine-start pd-pod-create pd-images-build
+pd-init: pd-machine-init pd-machine-start pd-pod-create
 
-pd-start: pd-gitlab pd-runner pd-dind
+pd-start: pd-gitlab
