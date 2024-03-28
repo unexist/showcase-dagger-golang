@@ -11,3 +11,5 @@ This project holds a showcase for Dagger related things.
 - https://docs.gitlab.com/16.10/ee/architecture/blueprints/runner_tokens/index.html#using-the-authentication-token-in-place-of-the-registration-token
 - https://docs.gitlab.com/runner/configuration/tls-self-signed.html
 - https://docs.gitlab.com/ee/user/project/import/github.html
+- https://opensource.com/article/23/3/podman-gitlab-runners
+- https://gitlab.com/qontainers/pipglr
