@@ -10,3 +10,4 @@ This project holds a showcase for Dagger related things.
 - https://docs.gitlab.com/omnibus/settings/memory_constrained_envs.html
 - https://docs.gitlab.com/16.10/ee/architecture/blueprints/runner_tokens/index.html#using-the-authentication-token-in-place-of-the-registration-token
 - https://docs.gitlab.com/runner/configuration/tls-self-signed.html
+- https://docs.gitlab.com/ee/user/project/import/github.html
