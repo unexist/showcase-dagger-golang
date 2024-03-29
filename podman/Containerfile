@@ -14,6 +14,9 @@ COPY gitlab.crt /etc/gitlab-runner/certs/gitlab.crt
 
 # Update timeouts
 RUN sed -i "s#system service#system service --time 0#" /home/podman/.config/systemd/user/podman.service
+RUN sed -i "s#64536#65539#" /etc/subuid
+RUN sed -i "s#64536#65539#" /etc/subgid
+RUN podman system migrate
 
 LABEL register="podman run -it --rm --pod=${PODNAME} \
     --secret=REGISTRATION_TOKEN,type=env \
