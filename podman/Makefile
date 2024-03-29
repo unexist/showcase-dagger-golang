@@ -10,11 +10,11 @@ SSL_ORGNAME := unexist.dev
 SSL_ORGUNIT := showcase
 SSL_FQDN := gitlab
 
-GITLAB_EMAIL := "root@local"
+GITLAB_MAIL := "admin@local"
 GITLAB_PASS := "todo_showcase!42"
 GITLAB_URL := "https://gitlab:443"
 
-RUNNER_IMAGE := "registry.gitlab.com/qontainers/pipglr:latest"
+TAG_NAME := "custom-pip-runner"
 
 # SSL
 gen-ssl:
@@ -57,7 +57,7 @@ pd-gitlab: gen-ssl
 		-v ./gitlab.crt:/etc/gitlab/ssl/gitlab.crt \
 		-v ./gitlab.key:/etc/gitlab/ssl/gitlab.key \
 		-v ./gitlab.rb:/etc/gitlab/gitlab.rb \
-		-e GITLAB_ROOT_EMAIL="$(GITLAB_MAIL)" -e GITLAB_ROOT_PASSWORD="$(GITLAB_PASS)" \
+		-e GITLAB_ROOT_EMAIL=$(GITLAB_MAIL) -e GITLAB_ROOT_PASSWORD=$(GITLAB_PASS) \
 		docker.io/gitlab/gitlab-ce:latest
 
 pd-runner:
@@ -67,7 +67,7 @@ pd-runner:
 		docker.io/gitlab/gitlab-runner:latest
 
 pd-runner-podman-build:
-	@podman build -t $(RUNNER_IMAGE) -f Containerfile \
+	@podman build -t $(TAG_NAME) -f Containerfile \
 		--build-arg=GITLAB_URL=$(GITLAB_URL) \
 		--build-arg=PODNAME=$(PODNAME)
 
@@ -82,13 +82,13 @@ pd-runner-podman:
 
 	@echo "$(TOKEN)" | podman secret create REGISTRATION_TOKEN -
 	@touch ./config.toml
-	@podman container runlabel register $(RUNNER_IMAGE)
+	@podman container runlabel register $(TAG_NAME)
 
 	@podman secret create config.toml ./config.toml
 
-	@podman container runlabel setupstorage $(RUNNER_IMAGE)
-	@podman container runlabel setupcache $(RUNNER_IMAGE)
-	@podman container runlabel run $(RUNNER_IMAGE)
+	@podman container runlabel setupstorage $(TAG_NAME)
+	@podman container runlabel setupcache $(TAG_NAME)
+	@podman container runlabel run $(TAG_NAME)
 
 pd-postgres:
 	@podman run -dit --name postgres --pod=$(PODNAME) \
