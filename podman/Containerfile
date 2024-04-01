@@ -10,17 +10,19 @@ ARG DEFAULT_JOB_IMAGE=registry.fedoraproject.org/fedora-minimal:latest
 ARG GITLAB_URL
 ARG NESTED_PRIVILEGED=true
 
-COPY gitlab.crt /etc/gitlab-runner/certs/gitlab.crt
-
-# Update timeouts
-RUN sed -i "s#system service#system service --time 0#" /home/podman/.config/systemd/user/podman.service
-RUN sed -i "s#64536#65539#" /etc/subuid
-RUN sed -i "s#64536#65539#" /etc/subgid
-RUN podman system migrate
+# FIXME: Weird issues with permissions with newuidmap as normal user on Debian 12 - so we run everything as root for now
+# https://github.com/containers/podman/issues/15370
+RUN mv -f /home/podman/.config/systemd/user/*.{service,socket,timer} /etc/systemd/system \
+    && chown root:root /etc/systemd/system/* \
+    && rm -rf home/podman/.config/systemd/user \
+    && mkdir -p /etc/systemd/system/{sockets.target.wants,default.target.wants} \
+    && ln -s /etc/systemd/system/podman.socket /etc/systemd/system/sockets.target.wants/ \
+    && ln -s /etc/systemd/system/prune.timer /etc/systemd/system/default.target.wants/
 
 LABEL register="podman run -it --rm --pod=${PODNAME} \
     --secret=REGISTRATION_TOKEN,type=env \
     -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
+    -v ./gitlab.crt:/etc/gitlab-runner/certs/gitlab.crt \
     -e REGISTER_NON_INTERACTIVE=true \
     -e CI_SERVER_URL=${GITLAB_URL} \
     -e CI_SERVER_TLS_CA_FILE=/etc/gitlab-runner/certs/gitlab.crt \
@@ -43,7 +45,9 @@ LABEL dumpconfig="podman run -it --rm --pod=${PODNAME} \
 LABEL run="podman run -dit --name pipglr --pod=${PODNAME} \
     --secret config.toml,uid=1001,gid=1001 \
     -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
+    -v ./gitlab.crt:/etc/gitlab-runner/certs/gitlab.crt \
     -v pipglr-storage:/home/podman/.local/share/containers \
     -v pipglr-cache:/cache \
-    --systemd true --privileged \
-    --device /dev/fuse \$IMAGE"
+    --systemd true \
+    --privileged \
+    --device /dev/fuse:rw \$IMAGE"
