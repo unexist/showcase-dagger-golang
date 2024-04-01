@@ -5,10 +5,10 @@ stages:
 .dagger:
     image: golang:alpine
     before_script:
-        - apk add podman curl
-        - rc-service cgroups start
+        - apk add podman curl fuse-overlayfs
         - cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
-        - echo "$CI_REGISTRY_PASSWORD" | podman login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+        - sed -i 's/#mount_program/mount_program/' /etc/containers/storage.conf
+        - echo "$CI_REGISTRY_PASSWORD" | podman login --tls-verify=false -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
 
 build-deploy:
     extends: [ .dagger ]
