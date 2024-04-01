@@ -6,7 +6,6 @@ stages:
     image: golang:alpine
     before_script:
         - apk add podman curl
-        - rc-update add cgroups
         - rc-service cgroups start
         - cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
         - echo "$CI_REGISTRY_PASSWORD" | podman login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
