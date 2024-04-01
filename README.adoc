@@ -13,3 +13,5 @@ This project holds a showcase for Dagger related things.
 - https://docs.gitlab.com/ee/user/project/import/github.html
 - https://opensource.com/article/23/3/podman-gitlab-runners
 - https://gitlab.com/qontainers/pipglr
+- https://github.com/containers/podman/discussions/21739
+- https://samuel.forestier.app/blog/security/podman-rootless-in-podman-rootless-the-debian-way
