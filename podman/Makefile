@@ -12,7 +12,7 @@ SSL_FQDN := gitlab
 
 GITLAB_MAIL := "admin@local"
 GITLAB_PASS := "todo_showcase!42"
-GITLAB_URL := "https://gitlab:443"
+GITLAB_URL := "https://gitlab:10443"
 
 TAG_NAME := "custom-pip-runner"
 
@@ -43,7 +43,7 @@ pd-machine-recreate: pd-machine-rm pd-machine-init pd-machine-start
 
 pd-pod-create:
 	@podman pod create -n $(PODNAME) --network bridge \
-		-p 10022:22 -p 10080:80 -p 10443:443 \
+		-p 10022:22 -p 10080:80 -p 10443:10443 \
 		-p 4567:4567
 
 pd-pod-rm:

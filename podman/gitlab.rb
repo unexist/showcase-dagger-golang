@@ -7,7 +7,7 @@ nginx['ssl_certificate'] = "/etc/gitlab/ssl/gitlab.crt"
 nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/gitlab.key"
 
 # Required - otherwise der port from external_url is used - https://docs.gitlab.com/omnibus/settings/nginx.html#setting-the-nginx-listen-port
-nginx['listen_port'] = 443
+nginx['listen_port'] = 10443
 
 letsencrypt['enable'] = false
 prometheus_monitoring['enable'] = false
