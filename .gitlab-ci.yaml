@@ -1,6 +1,5 @@
 stages:
     - build
-    - deploy
 
 .dagger:
     image: golang:alpine
@@ -11,6 +10,7 @@ stages:
         - echo "$CI_REGISTRY_PASSWORD" | podman login --tls-verify=false -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
 
 build-deploy:
+    stage: build
     extends: [ .dagger ]
     script:
         - dagger run go run ci/main.go
