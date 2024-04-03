@@ -15,9 +15,18 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 
 	"dagger.io/dagger"
 )
+
+func failIfUnset(keys []string) {
+	for _, key := range keys {
+		if _, ok := os.LookupEnv(key); !ok {
+			panic(fmt.Sprintf("$%s must be set", key))
+		}
+	}
+}
 
 func initClient(ctx *context.Context) (*dagger.Client, error) {
 	client, err := dagger.Connect(*ctx, dagger.WithLogOutput(os.Stdout))
@@ -39,17 +48,22 @@ func main() {
 	defer client.Close()
 
 	build(&ctx, client)
-	publish(&ctx, client)
+
+	if "1" == os.Getenv("DAGGER_PUBLISH") {
+		publish(&ctx, client)
+	}
 }
 
 func build(ctx *context.Context, client *dagger.Client) error {
 	fmt.Println("Building with Dagger")
 
+	failIfUnset([]string{"BINARY_NAME"})
+
 	src := client.Host().Directory(".", dagger.HostDirectoryOpts{
 		Exclude: []string{"ci/"},
 	})
 
-	const path = "build/"
+	const buildPath = "build/"
 
 	golang := client.
 		Pipeline("Build application").
@@ -57,11 +71,12 @@ func build(ctx *context.Context, client *dagger.Client) error {
 		From("golang:latest").
 		WithDirectory("/src", src).
 		WithWorkdir("/src").
-		WithExec([]string{"go", "build", "-o", path})
+		WithExec([]string{"go", "build", "-o",
+			path.Join(buildPath, os.Getenv("BINARY_NAME"))})
 
-	output := golang.Directory(path)
+	output := golang.Directory(buildPath)
 
-	_, err := output.Export(*ctx, path)
+	_, err := output.Export(*ctx, buildPath)
 	if nil != err {
 		return err
 	}
@@ -70,10 +85,14 @@ func build(ctx *context.Context, client *dagger.Client) error {
 }
 
 func publish(ctx *context.Context, client *dagger.Client) {
+	fmt.Println("Publishing with Dagger")
+
+	failIfUnset([]string{"DAGGER_USERNAME", "DAGGER_IMAGE", "DAGGER_TAG", "BINARY_NAME"})
+
 	imgPath := fmt.Sprintf("%s/%s:%s",
-		os.Getenv("USERNAME"),
-		os.Getenv("IMAGE_NAME"),
-		os.Getenv("TAG"),
+		os.Getenv("DAGGER_USERNAME"),
+		os.Getenv("DAGGER_IMAGE"),
+		os.Getenv("DAGGER_TAG"),
 	)
 
 	_, err := client.
@@ -81,7 +100,10 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		Host().
 		Directory(".").
 		DockerBuild(dagger.DirectoryDockerBuildOpts{
-			Dockerfile: "./Dockerfile.prod",
+			Dockerfile: "./ci/Containerfile.dagger",
+			BuildArgs: []dagger.BuildArg{
+				{Name: "BINARY_NAME", Value: os.Getenv("BINARY_NAME")},
+			},
 		}).
 		Publish(*ctx, imgPath)
 
