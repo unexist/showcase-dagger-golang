@@ -48,7 +48,8 @@ vet-gin:
 
 # Run
 run-gin:
-	@$(SHELL) -c "cd todo-service-gin; APP_DB_USERNAME=$(PG_USER) APP_DB_PASSWORD=$(PG_PASS) APP_DB_NAME=postgres ./$(BINARY)"
+	@$(SHELL) -c "cd todo-service-gin; APP_DB_USERNAME=$(PG_USER) \
+		APP_DB_PASSWORD=$(PG_PASS) APP_DB_NAME=postgres ./$(BINARY)"
 
 # Tests
 test-fake-gin:
@@ -56,10 +57,11 @@ test-fake-gin:
 
 # Dagger
 dagger-build:
-	@$(SHELL) -c "cd todo-service-gin; BINARY_NAME=showcase dagger run go run ci/main.go"
+	@$(SHELL) -c "cd todo-service-gin; BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 dagger-publish:
-	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_USERNAME=Administrator DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=showcase dagger run go run ci/main.go"
+	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY=localhost:4567 \
+		DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 # Helper
 clear:

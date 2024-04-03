@@ -56,7 +56,6 @@ func main() {
 
 func build(ctx *context.Context, client *dagger.Client) error {
 	fmt.Println("Building with Dagger")
-
 	failIfUnset([]string{"BINARY_NAME"})
 
 	src := client.Host().Directory(".", dagger.HostDirectoryOpts{
@@ -86,14 +85,7 @@ func build(ctx *context.Context, client *dagger.Client) error {
 
 func publish(ctx *context.Context, client *dagger.Client) {
 	fmt.Println("Publishing with Dagger")
-
-	failIfUnset([]string{"DAGGER_USERNAME", "DAGGER_IMAGE", "DAGGER_TAG", "BINARY_NAME"})
-
-	imgPath := fmt.Sprintf("%s/%s:%s",
-		os.Getenv("DAGGER_USERNAME"),
-		os.Getenv("DAGGER_IMAGE"),
-		os.Getenv("DAGGER_TAG"),
-	)
+	failIfUnset([]string{"DAGGER_REGISTRY", "DAGGER_IMAGE", "DAGGER_TAG", "BINARY_NAME"})
 
 	_, err := client.
 		Pipeline("Publish to Gitlab").
@@ -105,7 +97,12 @@ func publish(ctx *context.Context, client *dagger.Client) {
 				{Name: "BINARY_NAME", Value: os.Getenv("BINARY_NAME")},
 			},
 		}).
-		Publish(*ctx, imgPath)
+		Publish(*ctx,
+			fmt.Sprintf("%s/%s:%s",
+				os.Getenv("DAGGER_REGISTRY"),
+				os.Getenv("DAGGER_IMAGE"),
+				os.Getenv("DAGGER_TAG"),
+			))
 
 	if nil != err {
 		fmt.Println(err)
