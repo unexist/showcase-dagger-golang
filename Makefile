@@ -55,8 +55,11 @@ test-fake-gin:
 	@$(SHELL) -c "cd todo-service-gin; go test -v -tags=fake ./test"
 
 # Dagger
-dagger:
-	@$(SHELL) -c "cd todo-service-gin; dagger run go run ci/main.go"
+dagger-build:
+	@$(SHELL) -c "cd todo-service-gin; BINARY_NAME=showcase dagger run go run ci/main.go"
+
+dagger-publish:
+	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_USERNAME=Administrator DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=showcase dagger run go run ci/main.go"
 
 # Helper
 clear:
