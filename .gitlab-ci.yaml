@@ -3,14 +3,19 @@ stages:
 
 .dagger:
     image: golang:alpine
+    cache:
+        key: $CI_COMMIT_REF_SLUG
+        paths:
+            - /usr/local/bin
     before_script:
         - apk add podman curl fuse-overlayfs
-        - cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
         - sed -i 's/#mount_program/mount_program/' /etc/containers/storage.conf
+        - ln -s /usr/bin/podman /usr/bin/docker
+        - curl -sL --retry 3 https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
         - echo "$CI_REGISTRY_PASSWORD" | podman login --tls-verify=false -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
 
 build-deploy:
     stage: build
     extends: [ .dagger ]
     script:
-        - dagger run go run ci/main.go
+        - cd todo-service-gin && dagger run go run ci/main.go
