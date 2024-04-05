@@ -13,8 +13,10 @@ SSL_FQDN := gitlab
 GITLAB_MAIL := "admin@local"
 GITLAB_PASS := "todo_showcase!42"
 GITLAB_URL := "https://gitlab:10443"
+REGISTRY_URL := "https://localhost:4567"
 
-TAG_NAME := "custom-pip-runner"
+RUNNER_TAG_NAME := "custom-pip-runner"
+BUILDER_TAG_NAME := "custom-builder"
 
 # SSL
 gen-ssl:
@@ -57,6 +59,7 @@ pd-gitlab: gen-ssl
 		-v ./gitlab.crt:/etc/gitlab/ssl/gitlab.crt \
 		-v ./gitlab.key:/etc/gitlab/ssl/gitlab.key \
 		-v ./gitlab.rb:/etc/gitlab/gitlab.rb \
+		-v ./gitlab-data:/var/opt/gitlab \
 		-e GITLAB_ROOT_EMAIL=$(GITLAB_MAIL) -e GITLAB_ROOT_PASSWORD=$(GITLAB_PASS) \
 		docker.io/gitlab/gitlab-ce:latest
 
@@ -67,14 +70,24 @@ pd-runner:
 		docker.io/gitlab/gitlab-runner:latest
 
 pd-runner-podman-build:
-	@podman build -t $(TAG_NAME) -f Containerfile \
+	@podman build -t $(RUNNER_TAG_NAME) -f runner/Containerfile \
 		--build-arg=GITLAB_URL=$(GITLAB_URL) \
 		--build-arg=PODNAME=$(PODNAME)
 
+pd-runner-builder-build:
+	@podman build -t $(BUILDER_TAG_NAME) -f builder/Containerfile
+
+# TOKEN=abcd123 make pd-runner-builder-push
+pd-runner-builder-push:
+	@test -z "$(TOKEN)" && echo "\$$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS)" && false
+	@podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) -p $(TOKEN)
+	@podman push --tls-verify=false $(REGISTRY_URL)/$(BUILDER_TAG_NAME)
+
 # TOKEN=abcd123 make pd-runner-podman
 pd-runner-podman:
-	#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true
-	#podman secret exists config.toml && podman secret rm config.toml || true
+	@test -z "$(TOKEN)" && echo "\$$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS)" && false
+	@echo "#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true"
+	@echo "#podman secret exists config.toml && podman secret rm config.toml || true"
 	@podman secret rm REGISTRATION_TOKEN || true
 	@podman secret rm config.toml || true
 	@podman volume exists pipglr-storage && podman volume rm pipglr-storage || true
@@ -82,13 +95,13 @@ pd-runner-podman:
 
 	@echo "$(TOKEN)" | podman secret create REGISTRATION_TOKEN -
 	@touch ./config.toml
-	@podman container runlabel register $(TAG_NAME)
+	@podman container runlabel register $(RUNNER_TAG_NAME)
 
 	@podman secret create config.toml ./config.toml
 
-	@podman container runlabel setupstorage $(TAG_NAME)
-	@podman container runlabel setupcache $(TAG_NAME)
-	@podman container runlabel run $(TAG_NAME)
+	@podman container runlabel setupstorage $(RUNNER_TAG_NAME)
+	@podman container runlabel setupcache $(RUNNER_TAG_NAME)
+	@podman container runlabel run $(RUNNER_TAG_NAME)
 
 pd-postgres:
 	@podman run -dit --name postgres --pod=$(PODNAME) \
