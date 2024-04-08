@@ -1,13 +1,11 @@
 # Config
 PODNAME := showcase
-PG_USER := postgres
-PG_PASS := postgres
 
 SSL_COUNTRY := DE
 SSL_STATE := DE
 SSL_LOCALITY := DE
-SSL_ORGNAME := unexist.dev
-SSL_ORGUNIT := showcase
+SSL_ORG_NAME := unexist.dev
+SSL_ORG_UNIT := showcase
 SSL_FQDN := gitlab
 
 GITLAB_MAIL := "admin@local"
@@ -15,15 +13,27 @@ GITLAB_PASS := "todo_showcase!42"
 GITLAB_URL := "https://gitlab:10443"
 REGISTRY_URL := "https://localhost:4567"
 
-RUNNER_TAG_NAME := "custom-pip-runner"
-BUILDER_TAG_NAME := "custom-builder"
+RUNNER_IMAGE_NAME := "custom-pip-runner"
+BUILDER_IMAGE_NAME := "custom-builder"
 
-# SSL
-gen-ssl:
+# Helper
+--gen-ssl:
 	@openssl req -newkey rsa:4096  -x509  -sha512  -days 365 -nodes \
 		-out gitlab.crt -keyout gitlab.key \
 		-addext "subjectAltName=DNS:gitlab" \
-		-subj "/C=$(SSL_COUNTRY)/ST=$(SSL_STATE)/L=$(SSL_LOCALITY)/O=$(SSL_ORGNAME)/OU=$(SSL_ORGUNIT)/CN=$(SSL_FQDN)"
+		-subj "/C=$(SSL_COUNTRY)/ST=$(SSL_STATE)/L=$(SSL_LOCALITY)/O=$(SSL_ORG_NAME)/OU=$(SSL_ORG_UNIT)/CN=$(SSL_FQDN)"
+
+--check-token:
+ifndef TOKEN
+	$(error $$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS))
+endif
+
+--get-token:
+	#podman secret exists GITLAB_TOKEN && podman secret rm GITLAB_TOKEN || true
+	@podman secret rm GITLAB_TOKEN || true
+	@echo "-u $(GITLAB_MAIL):$(GITLAB_PASS)" | curl -s --insecure -X GET \
+		-K- "$(GITLAB_URL)/jwt/auth?service=container_registry&scope=repository:$(BUILDER_IMAGE_NAME):pull,push" | jq .token | \
+		podman secret create GITLAB_TOKEN -
 
 show-ssl:
 	@openssl x509 -in gitlab.crt -text -noout
@@ -53,7 +63,7 @@ pd-pod-rm:
 
 pd-pod-recreate: pd-pod-rm pd-pod-create
 
-pd-gitlab: gen-ssl
+pd-gitlab: --gen-ssl
 	@podman run -dit --name gitlab --pod=$(PODNAME) \
 		--memory=4096m --cpus=4 \
 		-v ./gitlab.crt:/etc/gitlab/ssl/gitlab.crt \
@@ -70,22 +80,18 @@ pd-runner:
 		docker.io/gitlab/gitlab-runner:latest
 
 pd-runner-podman-build:
-	@podman build -t $(RUNNER_TAG_NAME) -f runner/Containerfile \
+	@podman build -t $(RUNNER_IMAGE_NAME) -f runner/Containerfile \
 		--build-arg=GITLAB_URL=$(GITLAB_URL) \
 		--build-arg=PODNAME=$(PODNAME)
 
 pd-runner-builder-build:
-	@podman build -t $(BUILDER_TAG_NAME) -f builder/Containerfile
+	@podman build -t $(BUILDER_IMAGE_NAME) -f builder/Containerfile
 
---check-token:
-ifndef TOKEN
-	$(error $$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS))
-endif
-
-# TOKEN=abcd123 make pd-runner-builder-push
-pd-runner-builder-push: --check-token
-	@podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) -p $(TOKEN)
-	@podman push --tls-verify=false $(REGISTRY_URL)/$(BUILDER_TAG_NAME)
+pd-runner-builder-push: --get-token
+	#@podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) --secret GITLAB_TOKEN
+	@podman run --rm --secret GITLAB_TOKEN --name debian-is-later-with-updates alpine cat /run/secrets/GITLAB_TOKEN | \
+		podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) --password-stdin
+	@podman push --tls-verify=false $(REGISTRY_URL)/$(BUILDER_IMAGE_NAME)
 
 # TOKEN=abcd123 make pd-runner-podman
 pd-runner-podman: --check-token
@@ -98,19 +104,13 @@ pd-runner-podman: --check-token
 
 	@echo "$(TOKEN)" | podman secret create REGISTRATION_TOKEN -
 	@touch ./config.toml
-	@podman container runlabel register $(RUNNER_TAG_NAME)
+	@podman container runlabel register $(RUNNER_IMAGE_NAME)
 
 	@podman secret create config.toml ./config.toml
 
-	@podman container runlabel setupstorage $(RUNNER_TAG_NAME)
-	@podman container runlabel setupcache $(RUNNER_TAG_NAME)
-	@podman container runlabel run $(RUNNER_TAG_NAME)
-
-pd-postgres:
-	@podman run -dit --name postgres --pod=$(PODNAME) \
-		-e POSTGRES_USER=$(PG_USER) \
-		-e POSTGRES_PASSWORD=$(PG_PASS) \
-		docker.io/postgres:latest
+	@podman container runlabel setupstorage $(RUNNER_IMAGE_NAME)
+	@podman container runlabel setupcache $(RUNNER_IMAGE_NAME)
+	@podman container runlabel run $(RUNNER_IMAGE_NAME)
 
 pd-init: pd-machine-init pd-machine-start pd-pod-create
 
