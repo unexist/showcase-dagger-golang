@@ -77,17 +77,20 @@ pd-runner-podman-build:
 pd-runner-builder-build:
 	@podman build -t $(BUILDER_TAG_NAME) -f builder/Containerfile
 
+--check-token:
+ifndef TOKEN
+	$(error $$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS))
+endif
+
 # TOKEN=abcd123 make pd-runner-builder-push
-pd-runner-builder-push:
-	@test -z "$(TOKEN)" && echo "\$$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS)" && false
+pd-runner-builder-push: --check-token
 	@podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) -p $(TOKEN)
 	@podman push --tls-verify=false $(REGISTRY_URL)/$(BUILDER_TAG_NAME)
 
 # TOKEN=abcd123 make pd-runner-podman
-pd-runner-podman:
-	@test -z "$(TOKEN)" && echo "\$$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS)" && false
-	@echo "#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true"
-	@echo "#podman secret exists config.toml && podman secret rm config.toml || true"
+pd-runner-podman: --check-token
+	#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true
+	#podman secret exists config.toml && podman secret rm config.toml || true
 	@podman secret rm REGISTRATION_TOKEN || true
 	@podman secret rm config.toml || true
 	@podman volume exists pipglr-storage && podman volume rm pipglr-storage || true
