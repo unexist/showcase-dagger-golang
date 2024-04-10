@@ -28,6 +28,14 @@ func failIfUnset(keys []string) {
 	}
 }
 
+func getEnv(key, fallback string) string {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		value = fallback
+	}
+	return value
+}
+
 func initClient(ctx *context.Context) (*dagger.Client, error) {
 	client, err := dagger.Connect(*ctx, dagger.WithLogOutput(os.Stdout))
 	if err != nil {
@@ -56,7 +64,6 @@ func main() {
 
 func build(ctx *context.Context, client *dagger.Client) error {
 	fmt.Println("Building with Dagger")
-	failIfUnset([]string{"BINARY_NAME"})
 
 	src := client.Host().Directory(".", dagger.HostDirectoryOpts{
 		Exclude: []string{"ci/"},
@@ -71,7 +78,7 @@ func build(ctx *context.Context, client *dagger.Client) error {
 		WithDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "build", "-o",
-			path.Join(buildPath, os.Getenv("BINARY_NAME"))})
+			path.Join(buildPath, getEnv("BINARY_NAME", "showcase"))})
 
 	output := golang.Directory(buildPath)
 
@@ -85,7 +92,7 @@ func build(ctx *context.Context, client *dagger.Client) error {
 
 func publish(ctx *context.Context, client *dagger.Client) {
 	fmt.Println("Publishing with Dagger")
-	failIfUnset([]string{"DAGGER_REGISTRY", "DAGGER_IMAGE", "DAGGER_TAG", "BINARY_NAME"})
+	failIfUnset([]string{"DAGGER_REGISTRY", "DAGGER_IMAGE", "DAGGER_TAG"})
 
 	_, err := client.
 		Pipeline("Publish to Gitlab").
@@ -94,11 +101,11 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		DockerBuild(dagger.DirectoryDockerBuildOpts{
 			Dockerfile: "./ci/Containerfile.dagger",
 			BuildArgs: []dagger.BuildArg{
-				{Name: "BINARY_NAME", Value: os.Getenv("BINARY_NAME")},
+				{Name: "BINARY_NAME", Value: getEnv("BINARY_NAME", "showcase")},
 			},
 		}).
 		Publish(*ctx,
-			fmt.Sprintf("%s/%s:%s",
+			fmt.Sprintf("%s/root/showcase-dagger-golang/%s:%s",
 				os.Getenv("DAGGER_REGISTRY"),
 				os.Getenv("DAGGER_IMAGE"),
 				os.Getenv("DAGGER_TAG"),
