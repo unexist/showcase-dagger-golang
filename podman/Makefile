@@ -23,17 +23,30 @@ BUILDER_IMAGE_NAME := "custom-builder"
 		-addext "subjectAltName=DNS:gitlab" \
 		-subj "/C=$(SSL_COUNTRY)/ST=$(SSL_STATE)/L=$(SSL_LOCALITY)/O=$(SSL_ORG_NAME)/OU=$(SSL_ORG_UNIT)/CN=$(SSL_FQDN)"
 
+--guard-%:
+	@if [ "${${*}}" = "" ]; then \
+		echo "Environment variable $* not set: $*=abc123 make $(MAKECMDGOALS)"; \
+		exit 1; \
+	fi
+
 --check-token:
 ifndef TOKEN
 	$(error $$TOKEN must be set: TOKEN=abcd123 make $(MAKECMDGOALS))
 endif
 
 --get-token:
-	#podman secret exists GITLAB_TOKEN && podman secret rm GITLAB_TOKEN || true
-	@podman secret rm GITLAB_TOKEN || true
+	#podman secret exists ACCESS_TOKEN && podman secret rm ACCESS_TOKEN || true
+	@podman secret rm ACCESS_TOKEN || true
 	@echo "-u $(GITLAB_MAIL):$(GITLAB_PASS)" | curl -s --insecure -X GET \
 		-K- "$(GITLAB_URL)/jwt/auth?service=container_registry&scope=repository:$(BUILDER_IMAGE_NAME):pull,push" | jq .token | \
-		podman secret create GITLAB_TOKEN -
+		podman secret create ACCESS_TOKEN -
+
+list-repository:
+	@curl -s --insecure -X GET -u "$(GITLAB_MAIL):$(GITLAB_PASS)" "$(GITLAB_URL)/jwt/auth?service=container_registry&scope=registry:catalog:*" | jq .token | \
+		xargs -i curl -s --insecure --header "Authorization: Bearer {}" "$(REGISTRY_URL)/v2/_catalog" | jq .
+
+dump-secret: --guard-SECRET
+	@podman run --rm --secret $(SECRET) --name dummy-cat-container alpine cat /run/secrets/$(SECRET)
 
 show-ssl:
 	@openssl x509 -in gitlab.crt -text -noout
@@ -87,14 +100,13 @@ pd-runner-podman-build:
 pd-runner-builder-build:
 	@podman build -t $(BUILDER_IMAGE_NAME) -f builder/Containerfile
 
-pd-runner-builder-push: --get-token
-	#@podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) --secret GITLAB_TOKEN
-	@podman run --rm --secret GITLAB_TOKEN --name debian-is-later-with-updates alpine cat /run/secrets/GITLAB_TOKEN | \
-		podman login --tls-verify=false $(REGISTRY_URL) -u $(GITLAB_MAIL) --password-stdin
-	@podman push --tls-verify=false $(REGISTRY_URL)/$(BUILDER_IMAGE_NAME)
+pd-runner-builder-push:
+	@podman login --tls-verify=false -u $(GITLAB_MAIL) -p $(GITLAB_PASS) $(REGISTRY_URL)
+	@echo $(REGISTRY_URL) | sed -e "s#https://##" | xargs -i podman push --tls-verify=false \
+		$(BUILDER_IMAGE_NAME):latest {}/root/showcase-dagger-golang/$(BUILDER_IMAGE_NAME):latest
 
 # TOKEN=abcd123 make pd-runner-podman
-pd-runner-podman: --check-token
+pd-runner-podman: --guard-TOKEN
 	#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true
 	#podman secret exists config.toml && podman secret rm config.toml || true
 	@podman secret rm REGISTRATION_TOKEN || true
