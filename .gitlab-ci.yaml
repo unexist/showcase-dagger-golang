@@ -3,7 +3,7 @@ stages:
 
 default:
     before_script:
-        - echo "$CI_REGISTRY_PASSWORD" | podman login --tls-verify=false -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+        - podman login -u gitlab-ci-token -p ${CI_JOB_TOKEN} --tls-verify=false ${CI_REGISTRY}
 
 .dagger:
     image: golang:alpine
@@ -12,16 +12,17 @@ default:
         - sed -i 's/#mount_program/mount_program/' /etc/containers/storage.conf
         - ln -s /usr/bin/podman /usr/bin/docker
         - curl -sL --retry 3 https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
-        - podman push $CI_REGISTRY_IMAGE:latest
 
 build-deploy:
     stage: build
-    extends: [ .dagger ]
+    image: ${CI_REGISTRY}/root/showcase-dagger-golang/custom-builder:latest
+    #extends: [ .dagger ]
     variables:
         DAGGER_PUBLISH: 1
+        DAGGER_BUILD_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/golang:latest"
+        DAGGER_RUN_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/alpine:latest"
         DAGGER_REGISTRY: $CI_REGISTRY
-        DAGGER_IMAGE: todo-showcase
+        DAGGER_IMAGE: $CI_REGISTRY_IMAGE
         DAGGER_TAG: 0.1
-        BINARY_NAME: showcase
     script:
         - cd todo-service-gin && dagger run go run ci/main.go
