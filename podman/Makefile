@@ -10,8 +10,8 @@ SSL_FQDN := gitlab
 
 GITLAB_MAIL := "admin@local"
 GITLAB_PASS := "todo_showcase!42"
-GITLAB_URL := "https://gitlab:10443"
-REGISTRY_URL := "https://localhost:4567"
+GITLAB_URL := "gitlab:10443"
+REGISTRY_URL := "localhost:4567"
 
 RUNNER_IMAGE_NAME := "custom-pip-runner"
 BUILDER_IMAGE_NAME := "custom-builder"
@@ -35,15 +35,18 @@ ifndef TOKEN
 endif
 
 --get-token:
-	#podman secret exists ACCESS_TOKEN && podman secret rm ACCESS_TOKEN || true
+	@echo "# This requires Podman >=1.4"
+	@echo "#podman secret exists ACCESS_TOKEN && podman secret rm ACCESS_TOKEN || true"
+
 	@podman secret rm ACCESS_TOKEN || true
 	@echo "-u $(GITLAB_MAIL):$(GITLAB_PASS)" | curl -s --insecure -X GET \
-		-K- "$(GITLAB_URL)/jwt/auth?service=container_registry&scope=repository:$(BUILDER_IMAGE_NAME):pull,push" | jq .token | \
+		-K- "https://$(GITLAB_URL)/jwt/auth?service=container_registry&scope=repository:$(BUILDER_IMAGE_NAME):pull,push" | jq .token | \
 		podman secret create ACCESS_TOKEN -
 
 list-repository:
-	@curl -s --insecure -X GET -u "$(GITLAB_MAIL):$(GITLAB_PASS)" "$(GITLAB_URL)/jwt/auth?service=container_registry&scope=registry:catalog:*" | jq .token | \
-		xargs -i curl -s --insecure --header "Authorization: Bearer {}" "$(REGISTRY_URL)/v2/_catalog" | jq .
+	@curl -s --insecure -X GET -u "$(GITLAB_MAIL):$(GITLAB_PASS)" \
+		"https://$(GITLAB_URL)/jwt/auth?service=container_registry&scope=registry:catalog:*" | jq .token | \
+		xargs -i curl -s --insecure --header "Authorization: Bearer {}" "https://$(REGISTRY_URL)/v2/_catalog" | jq .
 
 dump-secret: --guard-SECRET
 	@podman run --rm --secret $(SECRET) --name dummy-cat-container alpine cat /run/secrets/$(SECRET)
@@ -95,28 +98,46 @@ pd-runner:
 pd-runner-podman-build:
 	@podman build -t $(RUNNER_IMAGE_NAME) -f runner/Containerfile \
 		--build-arg=GITLAB_URL=$(GITLAB_URL) \
+		--build-arg=REGISTRY_URL=$(REGISTRY_URL) \
 		--build-arg=PODNAME=$(PODNAME)
 
 pd-runner-builder-build:
 	@podman build -t $(BUILDER_IMAGE_NAME) -f builder/Containerfile
 
-pd-runner-builder-push:
-	@podman login --tls-verify=false -u $(GITLAB_MAIL) -p $(GITLAB_PASS) $(REGISTRY_URL)
-	@echo $(REGISTRY_URL) | sed -e "s#https://##" | xargs -i podman push --tls-verify=false \
-		$(BUILDER_IMAGE_NAME):latest {}/root/showcase-dagger-golang/$(BUILDER_IMAGE_NAME):latest
+pd-gitlab-prepare-cache: #pd-runner-builder-build
+	@podman login -u $(GITLAB_MAIL) -p $(GITLAB_PASS) --tls-verify=false https://$(REGISTRY_URL)
+
+	# Runner builder
+	@podman push --tls-verify=false \
+		$(BUILDER_IMAGE_NAME):latest $(REGISTRY_URL)/root/showcase-dagger-golang/$(BUILDER_IMAGE_NAME):latest
+
+	# Dagger builder
+	@podman pull docker.io/library/alpine:latest
+	@podman push --tls-verify=false \
+		docker.io/library/alpine:latest $(REGISTRY_URL)/root/showcase-dagger-golang/alpine:latest
+
+	# Dagger runner
+	@podman pull docker.io/library/golang:latest
+	@podman push --tls-verify=false \
+		docker.io/library/golang:latest $(REGISTRY_URL)/root/showcase-dagger-golang/golang:latest
 
 # TOKEN=abcd123 make pd-runner-podman
 pd-runner-podman: --guard-TOKEN
-	#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true
-	#podman secret exists config.toml && podman secret rm config.toml || true
+	@echo "# This requires Podman >=1.4"
+	@echo "#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true"
+	@echo "#podman secret exists config.toml && podman secret rm config.toml || true"
+
 	@podman secret rm REGISTRATION_TOKEN || true
 	@podman secret rm config.toml || true
 	@podman volume exists pipglr-storage && podman volume rm pipglr-storage || true
 	@podman volume exists pipglr-cache && podman volume rm pipglr-cache || true
 
 	@echo "$(TOKEN)" | podman secret create REGISTRATION_TOKEN -
-	@touch ./config.toml
+	@truncate -s 0 ./config.toml || true
 	@podman container runlabel register $(RUNNER_IMAGE_NAME)
+
+	@echo "# Fix SSL config to contact Gitlab registry"
+	@sed -i -e 's#volumes = \["/cache"\]#volumes = ["/cache", "/etc/gitlab-runner/certs/gitlab.crt:/etc/pki/ca-trust/source/anchors/ca.crt:ro"]#' ./config.toml
 
 	@podman secret create config.toml ./config.toml
 
