@@ -19,8 +19,8 @@ build-deploy:
     #extends: [ .dagger ]
     variables:
         DAGGER_PUBLISH: 1
-        DAGGER_BUILD_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/golang:latest"
-        DAGGER_RUN_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/alpine:latest"
+        DAGGER_BUILD_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/golang:latest
+        DAGGER_RUN_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/alpine:latest
         DAGGER_REGISTRY: $CI_REGISTRY
         DAGGER_IMAGE: $CI_REGISTRY_IMAGE
         DAGGER_TAG: 0.1
