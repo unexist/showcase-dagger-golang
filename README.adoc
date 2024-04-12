@@ -16,3 +16,5 @@ This project holds a showcase for Dagger related things.
 - https://github.com/containers/podman/discussions/21739
 - https://samuel.forestier.app/blog/security/podman-rootless-in-podman-rootless-the-debian-way
 - https://stackoverflow.com/a/77672453/18179
+- https://gitlab-org.gitlab.io/technical-writing-group/gitlab-docs-hugo/runner/configuration/advanced-configuration/
+- https://williamlieurance.com/insecure-podman-registry/
