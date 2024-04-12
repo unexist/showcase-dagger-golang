@@ -1,4 +1,5 @@
-FROM docker.io/alpine:latest
+ARG DAGGER_RUN_IMAGE
+FROM ${DAGGER_RUN_IMAGE}
 
 MAINTAINER Christoph Kappel <christoph@unexist.dev>
 

@@ -74,7 +74,7 @@ func build(ctx *context.Context, client *dagger.Client) error {
 	golang := client.
 		Pipeline("Build application").
 		Container().
-		From("golang:latest").
+		From(getEnv("DAGGER_BUILD_IMAGE", "docker.io/golang:latest")).
 		WithDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "build", "-o",
@@ -101,6 +101,7 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		DockerBuild(dagger.DirectoryDockerBuildOpts{
 			Dockerfile: "./ci/Containerfile.dagger",
 			BuildArgs: []dagger.BuildArg{
+				{Name: "DAGGER_RUN_IMAGE", Value: getEnv("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
 				{Name: "BINARY_NAME", Value: getEnv("BINARY_NAME", "showcase")},
 			},
 		}).
