@@ -28,7 +28,7 @@ func failIfUnset(keys []string) {
 	}
 }
 
-func getEnv(key, fallback string) string {
+func getEnvOrDefault(key, fallback string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists {
 		value = fallback
@@ -74,11 +74,11 @@ func build(ctx *context.Context, client *dagger.Client) error {
 	golang := client.
 		Pipeline("Build application").
 		Container().
-		From(getEnv("DAGGER_BUILD_IMAGE", "docker.io/golang:latest")).
+		From(getEnvOrDefault("DAGGER_BUILD_IMAGE", "docker.io/golang:latest")).
 		WithDirectory("/src", src).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "build", "-o",
-			path.Join(buildPath, getEnv("BINARY_NAME", "showcase"))})
+			path.Join(buildPath, getEnvOrDefault("BINARY_NAME", "showcase"))})
 
 	output := golang.Directory(buildPath)
 
@@ -101,8 +101,8 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		DockerBuild(dagger.DirectoryDockerBuildOpts{
 			Dockerfile: "./ci/Containerfile.dagger",
 			BuildArgs: []dagger.BuildArg{
-				{Name: "DAGGER_RUN_IMAGE", Value: getEnv("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
-				{Name: "BINARY_NAME", Value: getEnv("BINARY_NAME", "showcase")},
+				{Name: "DAGGER_RUN_IMAGE", Value: getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
+				{Name: "BINARY_NAME", Value: getEnvOrDefault("BINARY_NAME", "showcase")},
 			},
 		}).
 		Publish(*ctx,
