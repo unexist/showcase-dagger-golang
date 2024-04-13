@@ -92,7 +92,7 @@ func build(ctx *context.Context, client *dagger.Client) error {
 
 func publish(ctx *context.Context, client *dagger.Client) {
 	fmt.Println("Publishing with Dagger")
-	failIfUnset([]string{"DAGGER_REGISTRY", "DAGGER_IMAGE", "DAGGER_TAG"})
+	failIfUnset([]string{"DAGGER_REGISTRY_TOKEN", "DAGGER_REGISTRY_URL", "DAGGER_REGISTRY_USER", "DAGGER_IMAGE", "DAGGER_TAG"})
 
 	_, err := client.
 		Pipeline("Publish to Gitlab").
@@ -105,9 +105,12 @@ func publish(ctx *context.Context, client *dagger.Client) {
 				{Name: "BINARY_NAME", Value: getEnvOrDefault("BINARY_NAME", "showcase")},
 			},
 		}).
+		WithRegistryAuth(os.Getenv("DAGGER_REGISTRY_URL"),
+			os.Getenv("DAGGER_REGISTRY_USER"),
+			client.SetSecret("REGISTRY_TOKEN", os.Getenv("DAGGER_REGISTRY_TOKEN"))).
 		Publish(*ctx,
 			fmt.Sprintf("%s/root/showcase-dagger-golang/%s:%s",
-				os.Getenv("DAGGER_REGISTRY"),
+				os.Getenv("DAGGER_REGISTRY_URL"),
 				os.Getenv("DAGGER_IMAGE"),
 				os.Getenv("DAGGER_TAG"),
 			))

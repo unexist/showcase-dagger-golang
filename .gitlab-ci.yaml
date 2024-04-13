@@ -21,8 +21,10 @@ build-deploy:
         DAGGER_PUBLISH: 1
         DAGGER_BUILD_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/golang:latest
         DAGGER_RUN_IMAGE: ${CI_REGISTRY}/root/showcase-dagger-golang/alpine:latest
-        DAGGER_REGISTRY: $CI_REGISTRY
+        DAGGER_REGISTRY_URL: $CI_REGISTRY
+        DAGGER_REGISTRY_USER: gitlab-ci-token
+        DAGGER_REGISTRY_TOKEN: $CI_JOB_TOKEN
         DAGGER_IMAGE: $CI_REGISTRY_IMAGE
-        DAGGER_TAG: 0.1
+        DAGGER_TAG: 0.1.$CI_PIPELINE_IID
     script:
         - cd todo-service-gin && dagger run go run ci/main.go
