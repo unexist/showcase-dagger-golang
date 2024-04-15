@@ -73,7 +73,7 @@ install:
 	go install dagger.io/dagger@latest
 
 # Git
-# TOKEN=abc123 make test-bvuild
+# TOKEN=abc123 make test-build
 test-build:
 	curl -k -X POST --fail -F token=$(TOKEN) -F ref=master \
 		https://localhost:10443/api/v4/projects/2/trigger/pipeline
