@@ -2,7 +2,6 @@ FROM docker.io/golang:alpine
 
 MAINTAINER Christoph Kappel <christoph@unexist.dev>
 
-RUN apk add podman curl fuse-overlayfs \
+RUN apk add podman podman-docker curl fuse-overlayfs \
     && sed -i 's/#mount_program/mount_program/' /etc/containers/storage.conf \
-    && ln -s /usr/bin/podman /usr/bin/docker \
-    && curl -sL --retry 2 https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+    && curl -sL --retry 3 https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
