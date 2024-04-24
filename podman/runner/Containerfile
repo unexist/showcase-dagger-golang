@@ -25,6 +25,8 @@ RUN mv -f /home/podman/.config/systemd/user/*.{service,socket,timer} /etc/system
 RUN echo -e "[[registry]]\nlocation = \"${REGISTRY_URL}\"\ninsecure = true" > /etc/containers/registries.conf.d/gitlab.conf \
     && sed -i -e "s#localhost#gitlab#" /etc/containers/registries.conf.d/gitlab.conf
 
+RUN curl -sL --retry 3 https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+
 LABEL register="podman run -it --rm --pod=${PODNAME} \
     --secret=REGISTRATION_TOKEN,type=env \
     -v ./config.toml:/etc/gitlab-runner/config.toml:Z \
