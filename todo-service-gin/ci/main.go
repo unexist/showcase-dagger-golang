@@ -98,13 +98,27 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		Pipeline("Publish to Gitlab").
 		Host().
 		Directory(".").
-		DockerBuild(dagger.DirectoryDockerBuildOpts{
-			Dockerfile: "./ci/Containerfile.dagger",
-			BuildArgs: []dagger.BuildArg{
-				{Name: "DAGGER_RUN_IMAGE", Value: getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
-				{Name: "BINARY_NAME", Value: getEnvOrDefault("BINARY_NAME", "showcase")},
-			},
-		}).
+		DockerBuild().
+
+		// Create container by code
+		From(getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")).
+		WithExec([]string{"mkdir -p /app",
+			fmt.Sprintf("cp build/%s /app", getEnvOrDefault("BINARY_NAME", "showcase"))},
+			dagger.ContainerWithExecOpts{}).
+		WithWorkdir("/app").
+		WithExposedPort(8080, dagger.ContainerWithExposedPortOpts{}).
+		WithDefaultTerminalCmd([]string{fmt.Sprintf("./%s", getEnvOrDefault("BINARY_NAME", "showcase"))},
+			dagger.ContainerWithDefaultTerminalCmdOpts{}).
+
+		// Create container by containerfile
+		//	DockerBuild(dagger.DirectoryDockerBuildOpts{
+		//		Dockerfile: "./ci/Containerfile.dagger",
+		//		BuildArgs: []dagger.BuildArg{
+		//			{Name: "DAGGER_RUN_IMAGE", Value: getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
+		//			{Name: "BINARY_NAME", Value: getEnvOrDefault("BINARY_NAME", "showcase")},
+		//		},
+		//	}).
+
 		WithRegistryAuth(os.Getenv("DAGGER_REGISTRY_URL"),
 			os.Getenv("DAGGER_REGISTRY_USER"),
 			client.SetSecret("REGISTRY_TOKEN", os.Getenv("DAGGER_REGISTRY_TOKEN"))).
