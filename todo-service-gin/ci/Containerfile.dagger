@@ -5,7 +5,7 @@ MAINTAINER Christoph Kappel <christoph@unexist.dev>
 
 ARG BINARY_NAME a.out
 
-RUN mkdir -p /app
+RUN mkdir /app
 COPY build/${BINARY_NAME} /app
 WORKDIR /app
 
