@@ -92,11 +92,11 @@ func build(ctx *context.Context, client *dagger.Client) error {
 
 func WithCustomRegistryAuth(client *dagger.Client) dagger.WithContainerFunc {
 	return func(container *dagger.Container) *dagger.Container {
-		_, exists := os.LookupEnv("DAGGER_REGISTRY_TOKEN")
+		token, exists := os.LookupEnv("DAGGER_REGISTRY_TOKEN")
 		if exists {
 			return container.WithRegistryAuth(os.Getenv("DAGGER_REGISTRY_URL"),
 				os.Getenv("DAGGER_REGISTRY_USER"),
-				client.SetSecret("REGISTRY_TOKEN", os.Getenv("DAGGER_REGISTRY_TOKEN")))
+				client.SetSecret("REGISTRY_TOKEN", token))
 		}
 		return container
 	}
