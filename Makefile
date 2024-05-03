@@ -70,7 +70,7 @@ dagger-publish:
 		DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 dagger-publish-docker:
-	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=docker.io \
+	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=docker.io/$(USER) \
 		DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 # Helper
