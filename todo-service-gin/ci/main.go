@@ -20,7 +20,7 @@ import (
 	"dagger.io/dagger"
 )
 
-func failIfUnset(keys []string) {
+func panicIfUnset(keys []string) {
 	for _, key := range keys {
 		if _, ok := os.LookupEnv(key); !ok {
 			panic(fmt.Sprintf("$%s must be set", key))
@@ -134,10 +134,10 @@ func WithCustomContainerByFile(client *dagger.Client) dagger.WithContainerFunc {
 
 func publish(ctx *context.Context, client *dagger.Client) {
 	fmt.Println("Publishing with Dagger")
-	failIfUnset([]string{"DAGGER_REGISTRY_URL", "DAGGER_IMAGE", "DAGGER_TAG"})
+	panicIfUnset([]string{"DAGGER_REGISTRY_URL", "DAGGER_IMAGE", "DAGGER_TAG"})
 
 	_, err := client.
-		Pipeline("Publish to Gitlab").
+		Pipeline("Publish to registry").
 		Container().
 		With(WithCustomRegistryAuth(client)).
 		With(WithCustomContainerByCode(client)).
@@ -150,7 +150,6 @@ func publish(ctx *context.Context, client *dagger.Client) {
 			))
 
 	if nil != err {
-		fmt.Println(err)
 		panic(err)
 	}
 }
