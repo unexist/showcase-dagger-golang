@@ -102,12 +102,13 @@ func WithCustomRegistryAuth(client *dagger.Client) dagger.WithContainerFunc {
 	}
 }
 
-func WithCustomContainerByCode() dagger.WithContainerFunc {
+func WithCustomContainerByCode(client *dagger.Client) dagger.WithContainerFunc {
 	return func(container *dagger.Container) *dagger.Container {
 		return container.
 			From(getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")).
+			WithDirectory("/build", client.Host().Directory("build")).
 			WithExec([]string{"mkdir", "-p", "/app"}).
-			WithExec([]string{"cp", fmt.Sprintf("build/%s",
+			WithExec([]string{"cp", fmt.Sprintf("/build/%s",
 				getEnvOrDefault("BINARY_NAME", "showcase")), "/app"}).
 			WithWorkdir("/app").
 			WithExposedPort(8080).
@@ -139,7 +140,7 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		Pipeline("Publish to Gitlab").
 		Container().
 		With(WithCustomRegistryAuth(client)).
-		With(WithCustomContainerByCode()).
+		With(WithCustomContainerByCode(client)).
 		// With(WithCustomContainerByFile(client)).
 		Publish(*ctx,
 			fmt.Sprintf("%s/root/showcase-dagger-golang/%s:%s",
