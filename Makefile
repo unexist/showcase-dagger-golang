@@ -66,12 +66,13 @@ dagger-build:
 	@$(SHELL) -c "cd todo-service-gin; BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 dagger-publish:
-	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=localhost:4567 \
+	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=localhost:4567/root/showcase-dagger-golang \
 		DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
-dagger-publish-docker:
+dagger-publish-docker: --guard-REGISTRY_USER --guard-REGISTRY_TOKEN
 	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=docker.io/$(USER) \
-		DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
+		DAGGER_REGISTRY_USER=$(REGISTRY_USER) DAGGER_REGISTRY_TOKEN=$(REGISTRY_TOKEN) \
+		DAGGER_IMAGE=showcase-dagger-golang DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 # Helper
 clear:
