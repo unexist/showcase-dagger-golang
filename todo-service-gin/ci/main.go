@@ -143,7 +143,7 @@ func publish(ctx *context.Context, client *dagger.Client) {
 		With(WithCustomContainerByCode(client)).
 		// With(WithCustomContainerByFile(client)).
 		Publish(*ctx,
-			fmt.Sprintf("%s/root/showcase-dagger-golang/%s:%s",
+			fmt.Sprintf("%s/%s:%s",
 				os.Getenv("DAGGER_REGISTRY_URL"),
 				os.Getenv("DAGGER_IMAGE"),
 				os.Getenv("DAGGER_TAG"),
