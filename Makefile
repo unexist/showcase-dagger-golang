@@ -82,6 +82,7 @@ install:
 	go install braces.dev/errtrace/cmd/errtrace@latest
 	go install golang.org/x/tools/cmd/deadcode@latest
 	go install dagger.io/dagger@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 # Git
 # TOKEN=abc123 make test-build
