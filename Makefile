@@ -18,6 +18,12 @@ curl -X 'POST' \
 }'
 endef
 export JSON_TODO
+# Helper
+--guard-%:
+	@if [ "${${*}}" = "" ]; then \
+		echo "Environment variable $* not set: $*=abc123 make $(MAKECMDGOALS)"; \
+		exit 1; \
+	fi
 
 # Tools
 todo:
@@ -60,8 +66,13 @@ dagger-build:
 	@$(SHELL) -c "cd todo-service-gin; BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 dagger-publish:
-	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY=localhost:4567 \
+	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=localhost:4567/root/showcase-dagger-golang \
 		DAGGER_IMAGE=todo-showcase DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
+
+dagger-publish-docker: --guard-REGISTRY_USER --guard-REGISTRY_TOKEN
+	@$(SHELL) -c "cd todo-service-gin; DAGGER_PUBLISH=1 DAGGER_REGISTRY_URL=docker.io/$(USER) \
+		DAGGER_REGISTRY_USER=$(REGISTRY_USER) DAGGER_REGISTRY_TOKEN=$(REGISTRY_TOKEN) \
+		DAGGER_IMAGE=showcase-dagger-golang DAGGER_TAG=0.1 BINARY_NAME=$(BINARY) dagger run go run ci/main.go"
 
 # Helper
 clear:
@@ -71,10 +82,11 @@ install:
 	go install braces.dev/errtrace/cmd/errtrace@latest
 	go install golang.org/x/tools/cmd/deadcode@latest
 	go install dagger.io/dagger@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 # Git
 # TOKEN=abc123 make test-build
-test-build:
+test-build: --guard-TOKEN
 	curl -k -X POST --fail -F token=$(TOKEN) -F ref=master \
 		https://localhost:10443/api/v4/projects/2/trigger/pipeline
 

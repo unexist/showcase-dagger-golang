@@ -20,7 +20,7 @@ import (
 	"dagger.io/dagger"
 )
 
-func failIfUnset(keys []string) {
+func panicIfUnset(keys []string) {
 	for _, key := range keys {
 		if _, ok := os.LookupEnv(key); !ok {
 			panic(fmt.Sprintf("$%s must be set", key))
@@ -90,33 +90,66 @@ func build(ctx *context.Context, client *dagger.Client) error {
 	return nil
 }
 
+func WithCustomRegistryAuth(client *dagger.Client) dagger.WithContainerFunc {
+	return func(container *dagger.Container) *dagger.Container {
+		token, exists := os.LookupEnv("DAGGER_REGISTRY_TOKEN")
+		if exists {
+			return container.WithRegistryAuth(os.Getenv("DAGGER_REGISTRY_URL"),
+				os.Getenv("DAGGER_REGISTRY_USER"),
+				client.SetSecret("REGISTRY_TOKEN", token))
+		}
+		return container
+	}
+}
+
+func WithCustomContainerByCode(client *dagger.Client) dagger.WithContainerFunc {
+	return func(container *dagger.Container) *dagger.Container {
+		return container.
+			From(getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")).
+			WithDirectory("/build", client.Host().Directory("build")).
+			WithExec([]string{"mkdir", "-p", "/app"}).
+			WithExec([]string{"cp", fmt.Sprintf("/build/%s",
+				getEnvOrDefault("BINARY_NAME", "showcase")), "/app"}).
+			WithWorkdir("/app").
+			WithExposedPort(8080).
+			WithDefaultTerminalCmd([]string{fmt.Sprintf("./%s",
+				getEnvOrDefault("BINARY_NAME", "showcase"))})
+	}
+}
+
+func WithCustomContainerByFile(client *dagger.Client) dagger.WithContainerFunc {
+	return func(container *dagger.Container) *dagger.Container {
+		return client.
+			Host().
+			Directory(".").
+			DockerBuild(dagger.DirectoryDockerBuildOpts{
+				Dockerfile: "./ci/Containerfile.dagger",
+				BuildArgs: []dagger.BuildArg{
+					{Name: "DAGGER_RUN_IMAGE", Value: getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
+					{Name: "BINARY_NAME", Value: getEnvOrDefault("BINARY_NAME", "showcase")},
+				},
+			})
+	}
+}
+
 func publish(ctx *context.Context, client *dagger.Client) {
 	fmt.Println("Publishing with Dagger")
-	failIfUnset([]string{"DAGGER_REGISTRY_TOKEN", "DAGGER_REGISTRY_URL", "DAGGER_REGISTRY_USER", "DAGGER_IMAGE", "DAGGER_TAG"})
+	panicIfUnset([]string{"DAGGER_REGISTRY_URL", "DAGGER_IMAGE", "DAGGER_TAG"})
 
 	_, err := client.
-		Pipeline("Publish to Gitlab").
-		Host().
-		Directory(".").
-		DockerBuild(dagger.DirectoryDockerBuildOpts{
-			Dockerfile: "./ci/Containerfile.dagger",
-			BuildArgs: []dagger.BuildArg{
-				{Name: "DAGGER_RUN_IMAGE", Value: getEnvOrDefault("DAGGER_RUN_IMAGE", "docker.io/alpine:latest")},
-				{Name: "BINARY_NAME", Value: getEnvOrDefault("BINARY_NAME", "showcase")},
-			},
-		}).
-		WithRegistryAuth(os.Getenv("DAGGER_REGISTRY_URL"),
-			os.Getenv("DAGGER_REGISTRY_USER"),
-			client.SetSecret("REGISTRY_TOKEN", os.Getenv("DAGGER_REGISTRY_TOKEN"))).
+		Pipeline("Publish to registry").
+		Container().
+		With(WithCustomRegistryAuth(client)).
+		With(WithCustomContainerByCode(client)).
+		// With(WithCustomContainerByFile(client)).
 		Publish(*ctx,
-			fmt.Sprintf("%s/root/showcase-dagger-golang/%s:%s",
+			fmt.Sprintf("%s/%s:%s",
 				os.Getenv("DAGGER_REGISTRY_URL"),
 				os.Getenv("DAGGER_IMAGE"),
 				os.Getenv("DAGGER_TAG"),
 			))
 
 	if nil != err {
-		fmt.Println(err)
 		panic(err)
 	}
 }
