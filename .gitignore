@@ -52,5 +52,5 @@ release.properties
 podman/config.toml
 podman/gitlab-data/*
 
-# Misd
+# Misc
 **/token.txt
