@@ -123,7 +123,7 @@ pd-gitlab-prepare-cache: #pd-runner-builder-build
 
 # TOKEN=abcd123 make pd-runner-podman
 pd-runner-podman: --guard-TOKEN
-	@echo "# This requires Podman >=1.4"
+	@echo "# This requires Podman >=4.1"
 	@echo "#podman secret exists REGISTRATION_TOKEN && podman secret rm REGISTRATION_TOKEN || true"
 	@echo "#podman secret exists config.toml && podman secret rm config.toml || true"
 
