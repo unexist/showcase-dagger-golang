@@ -1,5 +1,4 @@
 .DEFAULT_GOAL := build
-.ONESHELL:
 
 BINARY := todo-service.bin
 PODNAME := showcase
