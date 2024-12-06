@@ -8,7 +8,6 @@ SSL_ORG_NAME := unexist.dev
 SSL_ORG_UNIT := showcase
 SSL_FQDN := gitlab
 
-GITLAB_MAIL := "admin@local"
 GITLAB_PASS := "todo_showcase!42"
 GITLAB_URL := "gitlab:10443"
 REGISTRY_URL := "localhost:4567"
@@ -39,12 +38,12 @@ endif
 	@echo "#podman secret exists ACCESS_TOKEN && podman secret rm ACCESS_TOKEN || true"
 
 	@podman secret rm ACCESS_TOKEN || true
-	@echo "-u $(GITLAB_MAIL):$(GITLAB_PASS)" | curl -s --insecure -X GET \
+	@echo "-u root:$(GITLAB_PASS)" | curl -s --insecure -X GET \
 		-K- "https://$(GITLAB_URL)/jwt/auth?service=container_registry&scope=repository:$(BUILDER_IMAGE_NAME):pull,push" | jq .token | \
 		podman secret create ACCESS_TOKEN -
 
 list-repository:
-	@curl -s --insecure -X GET -u "$(GITLAB_MAIL):$(GITLAB_PASS)" \
+	@curl -s --insecure -X GET -u "root:$(GITLAB_PASS)" \
 		"https://$(GITLAB_URL)/jwt/auth?service=container_registry&scope=registry:catalog:*" | jq .token | \
 		xargs -i curl -s --insecure --header "Authorization: Bearer {}" "https://$(REGISTRY_URL)/v2/_catalog" | jq .
 
@@ -69,10 +68,16 @@ pd-machine-rm:
 
 pd-machine-recreate: pd-machine-rm pd-machine-init pd-machine-start
 
-pd-pod-create:
-	@podman pod create -n $(PODNAME) --network bridge \
-		-p 10022:22 -p 10080:80 -p 10443:10443 \
-		-p 4567:4567
+# https://docs.gitlab.com/ee/administration/environment_variables.html
+pd-gitlab: --gen-ssl
+	# https://forum.gitlab.com/t/issues-with-gitlab-ce-docker-upgrade/13505
+	@mkdir -p ./gitlab-data/git-data/repositories
+	@chmod 2770 ./gitlab-data/git-data/repositories
+
+	podman pod create -n $(PODNAME) --network bridge  \
+		-p 10022:22 `# Gitlab ssh` \
+		-p 10443:10443 `# Gitlab web` \
+		-p 4567:4567 `# Gitlab registry`
 
 pd-pod-rm:
 	@podman pod rm -f $(PODNAME)
@@ -86,7 +91,7 @@ pd-gitlab: --gen-ssl
 		-v ./gitlab.key:/etc/gitlab/ssl/gitlab.key \
 		-v ./gitlab.rb:/etc/gitlab/gitlab.rb \
 		-v ./gitlab-data:/var/opt/gitlab \
-		-e GITLAB_ROOT_EMAIL=$(GITLAB_MAIL) -e GITLAB_ROOT_PASSWORD=$(GITLAB_PASS) \
+		-e GITLAB_ROOT_PASSWORD=$(GITLAB_PASS) \
 		docker.io/gitlab/gitlab-ce:latest
 
 pd-runner:
